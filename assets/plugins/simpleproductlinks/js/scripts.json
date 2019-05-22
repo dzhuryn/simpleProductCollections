@@ -1,0 +1,14 @@
+{
+	"scripts": {
+
+	 
+		"select2":{
+			"version":"1.0.0",
+			"src":"assets/plugins/simpleproductlinks/js/lib/select2.full.min.js"
+		},
+		"SimpleProductLinksCss":{
+			"version":"1.0.0",
+			"src":"assets/plugins/simpleproductlinks/js/plugin/simpleproductlinks.js"
+		}
+	}
+}
