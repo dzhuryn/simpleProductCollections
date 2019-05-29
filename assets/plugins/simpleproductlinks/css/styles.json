@@ -6,7 +6,7 @@
     },
     "select2Css" : {
       "version":"1.0.0",
-      "src":"assets/plugins/simpleproductlinks/css/lib/select2.min.css"
+      "src":"assets/lib/select2/css/select2.min.css"
     },
     "SimpleProductLinksCss" : {
       "version":"1.0.0",

@@ -38,7 +38,15 @@
 /assets/backup/
 /assets/import/
 /assets/.thumbs/
-/assets/templates/
 /assets/index.html
 /assets/export/
 /assets/images/
+/assets/plugins/multicategories/
+/assets/templates/index.html
+/assets/elements/
+/assets/plugins/staticElements/
+/assets/plugins/simpleproductlinks/lib/SimpleProductLinksCustom.php
+!/assets/plugins/simpleproductlinks/lib/SimpleProductLinksCustom.php
+/assets/plugins/simplegallery/
+/assets/.sgThumbs/
+/assets/galleries/

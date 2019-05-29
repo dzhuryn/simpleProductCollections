@@ -22,8 +22,17 @@ class splPlugin extends Plugin
 
     );
 
+    public function __construct($modx, $lang_attribute = 'en')
+    {
+        include_once(MODX_BASE_PATH . 'assets/plugins/simpleproductlinks/lib/model.php');
+
+        parent::__construct($modx, $lang_attribute);
+    }
+
     public function getTplPlaceholders()
     {
+
+
 
         $ph = array(
             'lang'         => $this->lang_attribute,
@@ -37,10 +46,12 @@ class splPlugin extends Plugin
 
     public function checkTable()
     {
-        return true;
+        return false;
     }
     public function createTable()
     {
+        $data = new Model($this->modx);
+        $data->createTable();
         return true;
     }
 

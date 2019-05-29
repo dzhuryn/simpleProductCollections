@@ -1,11 +1,7 @@
 <?php
-if (IN_MANAGER_MODE != 'true') die();
+if (!defined('IN_MANAGER_MODE') || IN_MANAGER_MODE != 'true') return;
+
 $e = &$modx->event;
-
-
-
-
-
 if ($e->name == 'OnDocFormRender') {
     include_once(MODX_BASE_PATH . 'assets/plugins/simpleproductlinks/lib/plugin.class.php');
     global $modx_lang_attribute, $richtexteditorIds;

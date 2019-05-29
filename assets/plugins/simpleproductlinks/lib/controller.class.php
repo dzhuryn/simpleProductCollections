@@ -9,9 +9,11 @@
 
 class SimpleProductLinksController
 {
+    protected $model;
     protected $modx = null;
     protected $pluginParams = null;
-    public $dlParams = array(
+
+    public $dlParamsForSearchItems = array(
         'api'                 => 'id,pagetitle,parent,html,text',
         'JSONformat'          => 'old',
         'display'             => 10,
@@ -28,7 +30,14 @@ class SimpleProductLinksController
         'showNoPublish'        => '1',
         'prepare'             => 'SimpleProductLinks\SimpleProductLinksController::prepare'
     );
-    public $dlParamsNoSearch = array();
+
+
+    public $dlParamsForGetAndShowItemsInTab = [
+        'idType'=>'documents',
+        'showNoPublish'=>'1',
+        'tvPrefix'=>'',
+
+    ];
 
     /**
      * SelectorController constructor.
@@ -36,7 +45,9 @@ class SimpleProductLinksController
      */
     public function __construct(\DocumentParser $modx,$params)
     {
+        include_once(MODX_BASE_PATH . 'assets/plugins/simpleproductlinks/lib/model.php');
         $this->modx = $modx;
+        $this->model = new Model($modx);
         $this->pluginParams = $params;
 
     }
@@ -100,8 +111,10 @@ class SimpleProductLinksController
             } else {
                 $mode = 'like';
             }
-            $this->dlParams['search'] = $search;
-            $searchContentFields = explode(',', $this->dlParams['searchContentFields']);
+
+
+            $this->dlParamsForSearchItems['search'] = $search;
+            $searchContentFields = explode(',', $this->dlParamsForSearchItems['searchContentFields']);
             $filters = array();
 
             if (is_numeric($search)) {
@@ -112,8 +125,8 @@ class SimpleProductLinksController
                 $filters[] = "content:{$field}:{$mode}:{$search}";
             }
 
-            if (!empty($this->dlParams['searchTVFields'])) {
-                $searchTVFields = explode(',', $this->dlParams['searchTVFields']);
+            if (!empty($this->dlParamsForSearchItems['searchTVFields'])) {
+                $searchTVFields = explode(',', $this->dlParamsForSearchItems['searchTVFields']);
                 foreach ($searchTVFields as $tv) {
                     $filters[] = "tv:{$tv}:{$mode}:{$search}";
                 }
@@ -121,10 +134,15 @@ class SimpleProductLinksController
             $filters = implode(';', $filters);
             if (!empty($filters)) {
                 $filters = "OR({$filters})";
-                $this->dlParams['filters'] = $filters;
+                $this->dlParamsForSearchItems['filters'] = $filters;
             }
         }
-        $out =  $this->modx->runSnippet("DocLister", $this->dlParams);
+
+
+        if(!empty($this->pluginParams['itemTemplates']) && empty($this->dlParamsForSearchItems['addWhereList'])){
+            $this->dlParamsForSearchItems['addWhereList'] = 'template in ('.$this->pluginParams['itemTemplates'].')';
+        }
+        $out =  $this->modx->runSnippet("DocLister", $this->dlParamsForSearchItems);
         $output = [];
         if (!is_array($out)) {
             $out = json_decode($out,true);
@@ -137,87 +155,65 @@ class SimpleProductLinksController
 
     }
     public function getList(){
-        $table = $this->modx->getFullTableName('product_links');
         $master = is_scalar($_REQUEST['master']) ? intval($_REQUEST['master']) : '';
-
-        $sql = "select slave from $table where master = $master ";
-        $res = $this->modx->db->getColumn('slave',$this->modx->db->query($sql));
+        $res = $this->model->getRelatedItems($master);
         $ids = implode(',',$res);
 
-        $defaultTpl = '@CODE:'.file_get_contents(MODX_BASE_PATH.'assets/plugins/simpleproductlinks/tpl/row.tpl');
+        $defaultRowTpl = '@FILE:simpleProductCollections/row';
+        $defaultOuterTpl = '@FILE:simpleProductCollections/outer';
 
-        $tpl = empty($this->pluginParams['rowTpl'])?$defaultTpl:$this->pluginParams['rowTpl'];
+        $tpl = empty($this->pluginParams['rowTpl'])?$defaultRowTpl:$this->pluginParams['rowTpl'];
+        $ownerTPL = empty($this->pluginParams['outerTpl'])?$defaultOuterTpl:$this->pluginParams['outerTpl'];
 
         $params = [
-            'idType'=>'documents',
             'documents'=>$ids,
             'tpl'=>$tpl,
-
-
-            'showNoPublish'=>'1',
-
-            'tvList'=>'*',
-            'tvPrefix'=>'',
+            'ownerTPL'=>$ownerTPL,
+            'tvList'=>$this->pluginParams['tvList'],
         ];
+
+
+        $params = array_merge($params,$this->dlParamsForGetAndShowItemsInTab);
+
 
 
         $out = $this->modx->runSnippet('DocLister',$params);
         return $out;
 
     }
-    public function addLink($master, $slave){
-        if ($master && $slave) {
-            $table = $this->modx->getFullTableName('product_links');
-            $sql = "
-                INSERT INTO {$table} ( master, slave)
-                VALUES ('$master', '$slave')
-                ON DUPLICATE KEY UPDATE  master = '$master', slave = '$slave';
-            ";
-            $this->modx->db->query($sql);
-        }
-    }
 
-    public function  remove($master = 0){
 
-        $table = $this->modx->getFullTableName('product_links');
-
-        $master = empty($master) && is_scalar($_REQUEST['master']) ? intval($_REQUEST['master']) : $master;
-
-        $this->modx->db->delete($table,"master = $master or slave = $master");
-    }
+    /**
+     * Метод создает связть товаров
+     * В первую очередь связует текущий и дочерний, а также с их дочерними
+     */
     public function create(){
-        $table = $this->modx->getFullTableName('product_links');
 
         $master = is_scalar($_REQUEST['master']) ? intval($_REQUEST['master']) : '';
         $slave = is_scalar($_REQUEST['slave']) ? intval($_REQUEST['slave']) : '';
         if($slave == $master) return;
 
-        $this->addLink($master, $slave);
-        $this->addLink($slave,$master);
 
-        $sql = "select slave from $table where master in ($master,$slave)";
-        $res = $this->modx->db->getColumn('slave',$this->modx->db->query($sql));
+        $this->model->addRelation($master,$slave);
+        $this->model->addRelation($slave,$master);
 
+        $res = $this->model->getFullRelations($master,$slave);
         $slaves = array_unique($res);
 
         foreach ($slaves as $v) {
             foreach ($slaves as $v2) {
                 if ($v != $v2) {
-                    $sql = "
-                    INSERT INTO {$table} ( master, slave)
-                    VALUES ('$v', '$v2')
-                    ON DUPLICATE KEY UPDATE  master = '$v', slave = '$v2'";
-
-                    $this->modx->db->query($sql);
-
+                    $this->model->addRelation($v,$v2);
                 }
             }
         }
+    }
 
-
-
-
-
-
+    /*
+     * Удаляет связи товара из дочерними
+     */
+    public function  remove($master = 0){
+        $master = empty($master) && is_scalar($_REQUEST['master']) ? intval($_REQUEST['master']) : $master;
+        $this->model->removeRelation($master);
     }
 }

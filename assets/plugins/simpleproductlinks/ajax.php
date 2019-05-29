@@ -15,12 +15,9 @@ if (!isset($_SESSION['mgrValidated'])) {
 }
 
 $modx->invokeEvent('OnManagerPageInit', array(
-    'invokedBy' => 'SimpleProductLinks',
-//    'tvId' => (int)$_REQUEST['tvid'],
-//    'tvName' => $_REQUEST['tvname']
-)
+        'invokedBy' => 'SimpleProductLinks',
+    )
 );
-
 
 $mode = (isset($_REQUEST['mode']) && is_scalar($_REQUEST['mode'])) ? $_REQUEST['mode'] : null;
 $out = null;
@@ -53,7 +50,4 @@ if ($controller instanceof \SimpleProductLinks\SimpleProductLinksController) {
     }
     $controller->callExit();
 }
-
-
-
 echo ($out = is_array($out) ? json_encode($out) : $out);
